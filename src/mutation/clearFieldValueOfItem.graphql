@@ -1,0 +1,5 @@
+mutation clearFieldValueOfItem($projectId: ID!, $itemId: ID!, $fieldId: ID!) {
+  clearProjectV2ItemFieldValue(input: {projectId: $projectId, itemId: $itemId, fieldId: $fieldId }) {
+    clientMutationId
+  }
+}

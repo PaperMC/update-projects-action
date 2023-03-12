@@ -1,0 +1,26 @@
+name: update-projects
+author: Machine-Maker
+description: A Github Action to add/move issues and prs around in the new Projects
+
+branding:
+  icon: check-circle
+  color: blue
+
+inputs:
+  github-token:
+    description: Access Token with read/write perms for the project
+    required: true
+  project-url:
+    description: URL of the project
+    required: true
+  column-field:
+    description: Name of the field that determines the column
+    required: true
+  label-to-column-map:
+    description: JSON object mapping labels to options in the `column-field`
+    required: true
+
+runs:
+  using: node16
+  main: dist/index.js
+

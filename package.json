@@ -1,0 +1,22 @@
+{
+  "name": "add-to-project-action",
+  "version": "0.0.1",
+  "description": "A Github Action to add/move issues and prs around in the new Projects",
+  "main": "src/index.ts",
+  "scripts": {
+    "package": "ncc build --source-map"
+  },
+  "keywords": [],
+  "author": "Machine-Maker",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^18.15.0",
+    "@vercel/ncc": "^0.36.1",
+    "prettier": "^2.8.4",
+    "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "@actions/core": "^1.10.0",
+    "@actions/github": "^5.1.1"
+  }
+}

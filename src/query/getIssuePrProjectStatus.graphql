@@ -1,0 +1,38 @@
+query getIssuePrProjectStatus($resourceUrl: URI!, $fieldName: String!) {
+  resource(url: $resourceUrl) {
+    ... on Issue {
+      id
+      projectItems(first: 100) { # An issue or pr shouldn't realistically have more than 100 projects assigned to it.
+        nodes {
+          itemId: id
+          project {
+            id
+          }
+          field: fieldValueByName(name: $fieldName) {
+            ... on ProjectV2ItemFieldSingleSelectValue {
+              name
+              optionId
+            }
+          }
+        }
+      }
+    }
+    ... on PullRequest {
+      id
+      projectItems(first: 100) { # An issue or pr shouldn't realistically have more than 100 projects assigned to it.
+        nodes {
+          itemId: id
+          project {
+            id
+          }
+          field: fieldValueByName(name: $fieldName) {
+            ... on ProjectV2ItemFieldSingleSelectValue {
+              name
+              optionId
+            }
+          }
+        }
+      }
+    }
+  }
+}
