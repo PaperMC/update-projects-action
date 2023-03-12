@@ -19,6 +19,10 @@ inputs:
   label-to-column-map:
     description: JSON object mapping labels to options in the `column-field`
     required: true
+  clear-on-no-match:
+    description: Whether or not to clear the `column-field` if no match in `label-to-column-map` is found
+    required: true
+    default: "true"
 
 runs:
   using: node16

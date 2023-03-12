@@ -80,12 +80,16 @@ async function run() {
         return;
       }
     }
-    core.notice(`Doesn't have any labels matching an option. Clearing the field...`);
-    await octokit.graphql(MUTATE_CLEAR_PROJECT_FIELD_VALUE, {
-      projectId: projectStatus.projectId,
-      itemId: projectStatus.itemId,
-      fieldId: options.field.id,
-    });
+    if (options.clearOnNoMatch) {
+      core.notice(`Doesn't have any labels matching an option. Clearing the field...`);
+      await octokit.graphql(MUTATE_CLEAR_PROJECT_FIELD_VALUE, {
+        projectId: projectStatus.projectId,
+        itemId: projectStatus.itemId,
+        fieldId: options.field.id,
+      });
+    } else {
+      core.notice(`Doesn't have any labels matching an option. Doing nothing...`);
+    }
   } catch (error: any) {
     core.setFailed(error.message);
   }

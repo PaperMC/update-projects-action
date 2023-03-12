@@ -51,5 +51,6 @@ export async function parseOptions(): Promise<Options> {
       name: columnField,
     },
     labelToOptionsMap,
+    clearOnNoMatch: core.getBooleanInput("clear-on-no-match", { required: true }),
   };
 }

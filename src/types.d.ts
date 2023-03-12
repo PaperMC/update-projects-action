@@ -11,6 +11,7 @@ declare module "add-to-project" {
     };
     field: GetColumnFieldId["repositoryOwner"]["projectV2"]["field"] & { name: string };
     labelToOptionsMap: Record<string, string>;
+    clearOnNoMatch: boolean;
   };
 
   type MatchGroups = {

@@ -9725,12 +9725,17 @@ function run() {
                     return;
                 }
             }
-            core.notice(`Doesn't have any labels matching an option. Clearing the field...`);
-            yield octokit.graphql(MUTATE_CLEAR_PROJECT_FIELD_VALUE, {
-                projectId: projectStatus.projectId,
-                itemId: projectStatus.itemId,
-                fieldId: options.field.id,
-            });
+            if (options.clearOnNoMatch) {
+                core.notice(`Doesn't have any labels matching an option. Clearing the field...`);
+                yield octokit.graphql(MUTATE_CLEAR_PROJECT_FIELD_VALUE, {
+                    projectId: projectStatus.projectId,
+                    itemId: projectStatus.itemId,
+                    fieldId: options.field.id,
+                });
+            }
+            else {
+                core.notice(`Doesn't have any labels matching an option. Doing nothing...`);
+            }
         }
         catch (error) {
             core.setFailed(error.message);
@@ -9839,6 +9844,7 @@ function parseOptions() {
             },
             field: Object.assign(Object.assign({}, field), { name: columnField }),
             labelToOptionsMap,
+            clearOnNoMatch: core.getBooleanInput("clear-on-no-match", { required: true }),
         };
     });
 }
