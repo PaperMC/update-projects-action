@@ -1,6 +1,6 @@
 {
   "name": "add-to-project-action",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "description": "A Github Action to add/move issues and prs around in the new Projects",
   "main": "src/index.ts",
   "scripts": {
