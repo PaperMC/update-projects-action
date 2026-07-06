@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # substitute RELEASE_VERSION for the latest version available in releases
-      - uses: Machine-Maker/add-to-project-action@RELEASE_VERSION
+      - uses: PaperMC/update-projects-action@RELEASE_VERSION
         with:
           github-token: ${{ secrets.SOME_TOKEN }}
           project-url: <the full url to your project> # e.g. https://github.com/users/Machine-Maker/projects/1/views/1
