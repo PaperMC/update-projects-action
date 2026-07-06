@@ -1,16 +1,14 @@
 {
-  "exclude": [
-    "node_modules",
-    "dist"
-  ],
+  "include": ["src", "review-status/src"],
   "compilerOptions": {
-    "target": "ES6",
-    "module": "CommonJS",
+    "target": "es2023",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "strict": true,
+    "noEmit": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "noImplicitAny": true,
-    "rootDir": "./src"
+    "types": ["node"]
   }
 }

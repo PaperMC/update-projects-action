@@ -1,0 +1,37 @@
+name: "Update PR Review Status"
+description: >
+  Sets a pull request's project status based on review approvals from org teams,
+  and promotes delayed approvals to full approval after a quiet period
+inputs:
+  github-token:
+    description: "Token with org project write, pull request read and org members read access"
+    required: true
+  mode:
+    description: >
+      "review" to set the status from the pull_request_review event that triggered the workflow,
+      "promote" to scan the project and promote stale delayed approvals
+    required: true
+  project-url:
+    description: "URL of the org project, e.g. https://github.com/orgs/PaperMC/projects/2"
+    required: true
+  status-field:
+    description: "Name of the status field on the project"
+    default: "Status"
+  full-approval-status:
+    description: "Status option to set on maintainer approval and on promotion"
+    default: "Full approval"
+  delayed-approval-status:
+    description: "Status option to set on developer approval"
+    default: "Delayed approval"
+  maintainer-teams:
+    description: "Team slugs whose approval grants full approval (newline- or comma-separated)"
+    required: true
+  developer-teams:
+    description: "Team slugs whose approval grants delayed approval (newline- or comma-separated)"
+    required: true
+  promote-after-days:
+    description: "Days without changes requested before a delayed approval is promoted (promote mode)"
+    default: "14"
+runs:
+  using: "node24"
+  main: "dist/index.mjs"

@@ -1,9 +1,14 @@
+declare module "*.graphql" {
+  const content: string;
+  export default content;
+}
+
 declare module "add-to-project" {
-  import { GitHub } from "@actions/github/lib/utils";
+  import { getOctokit } from "@actions/github";
 
   type Options = {
     token: string;
-    octokit: InstanceType<typeof GitHub>;
+    octokit: ReturnType<typeof getOctokit>;
     project: {
       id: string;
       url: string;

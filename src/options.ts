@@ -1,9 +1,7 @@
 import * as core from "@actions/core";
 import { GetColumnFieldId, MatchGroups, Options } from "add-to-project";
 import * as github from "@actions/github";
-import { readFileSync } from "node:fs";
-
-const GET_PROJECT_FIELD = readFileSync(__dirname + "/query/getProjectField.graphql", { encoding: "utf-8" });
+import GET_PROJECT_FIELD from "./query/getProjectField.graphql";
 
 const PROJECT_URL_REGEX = /^.*github.com\/(?<type>users|orgs)\/(?<owner>[0-9a-zA-Z-]+)\/projects\/(?<id>\d+)\/views\/(?<view>\d+)\/?$/;
 

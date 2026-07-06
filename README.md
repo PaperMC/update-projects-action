@@ -1,6 +1,9 @@
-# Add to Project
+# Update Projects Action
 
 This action manages issues and PRs with GitHub's projects.
+
+This repository also contains [review-status](review-status/), an action that sets a PR's
+project status based on review approvals from org teams.
 
 ## Inputs
 
@@ -35,7 +38,7 @@ jobs:
       - uses: PaperMC/update-projects-action@RELEASE_VERSION
         with:
           github-token: ${{ secrets.SOME_TOKEN }}
-          project-url: <the full url to your project> # e.g. https://github.com/users/Machine-Maker/projects/1/views/1
+          project-url: <the full url to your project> # e.g. https://github.com/users/PaperMC/projects/2/views/1
           column-field: Status
           label-to-column-map: |
             {
@@ -49,12 +52,10 @@ jobs:
 
 ## Development
 
-This project uses the yarn package manager.
-
 ```bash
-yarn install # installs dependencies
+npm install # installs dependencies
 ```
 
 ```bash
-yarn package # run before committing changes
+npm run build # typechecks and bundles to dist/ - run before committing changes
 ```

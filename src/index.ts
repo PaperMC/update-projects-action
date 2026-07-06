@@ -1,14 +1,11 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import { readFileSync } from "node:fs";
 import { GetIssuePrProjectStatus, Labelled, MutateAddIssuePrToProject, OptionPair, Options } from "add-to-project";
 import { parseOptions } from "./options";
-
-const GET_ISSUE_PR_PROJECT_STATUS = readFileSync(__dirname + "/query/getIssuePrProjectStatus.graphql", { encoding: "utf-8" });
-
-const MUTATE_UPDATE_PROJECT_FIELD_VALUE = readFileSync(__dirname + "/mutation/changeFieldValueOfItem.graphql", { encoding: "utf-8" });
-const MUTATE_CLEAR_PROJECT_FIELD_VALUE = readFileSync(__dirname + "/mutation/clearFieldValueOfItem.graphql", { encoding: "utf-8" });
-const MUTATE_ADD_ISSUE_PR_TO_PROJECT = readFileSync(__dirname + "/mutation/addIssuePrToProject.graphql", { encoding: "utf-8" });
+import GET_ISSUE_PR_PROJECT_STATUS from "./query/getIssuePrProjectStatus.graphql";
+import MUTATE_UPDATE_PROJECT_FIELD_VALUE from "./mutation/changeFieldValueOfItem.graphql";
+import MUTATE_CLEAR_PROJECT_FIELD_VALUE from "./mutation/clearFieldValueOfItem.graphql";
+import MUTATE_ADD_ISSUE_PR_TO_PROJECT from "./mutation/addIssuePrToProject.graphql";
 
 async function run() {
   try {
@@ -90,8 +87,8 @@ async function run() {
     } else {
       core.notice(`Doesn't have any labels matching an option. Doing nothing...`);
     }
-  } catch (error: any) {
-    core.setFailed(error.message);
+  } catch (error) {
+    core.setFailed(error instanceof Error ? error : String(error));
   }
 }
 
