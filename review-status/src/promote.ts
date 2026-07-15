@@ -1,14 +1,8 @@
 import * as core from '@actions/core';
 import type { Config, Context, Octokit } from './config';
 import { createTeamChecker } from './teams';
+import { latestActiveByUser, type Review } from './reviews';
 import { findOption, getProject, listPullRequestsWithStatus, setItemStatus } from './project';
-
-interface Review {
-  id: number;
-  state: string;
-  submitted_at?: string | null;
-  user: { login: string } | null;
-}
 
 interface ReviewDismissedEvent {
   event: string;
@@ -27,12 +21,7 @@ function submittedAt(review: Review): number {
 // The clock starts at the earliest active approval, but restarts whenever a change request is resolved
 // via the reviewer approving later or by the review being dismissed.
 async function analyzeReviews(reviews: Review[], isTeamReviewer: (login: string) => Promise<boolean>): Promise<ReviewAnalysis> {
-  // Latest active (non-dismissed) approval/request per reviewer
-  const activeByUser = new Map<string, Review>();
-  for (const review of reviews) {
-    if (!review.user || (review.state !== 'APPROVED' && review.state !== 'CHANGES_REQUESTED')) continue;
-    activeByUser.set(review.user.login, review);
-  }
+  const activeByUser = latestActiveByUser(reviews);
 
   const approvalTimes = [];
   const clockRestarts = [];

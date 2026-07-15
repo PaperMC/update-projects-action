@@ -7,12 +7,17 @@ project status based on review approvals from org teams.
 
 ## Inputs
 
-| Name                | Description                                                     |
-|---------------------|-----------------------------------------------------------------|
-| github-token        | Access Token with high enough permissions to change the project |
-| project-url         | The full url to your project that will be modified              |
-| column-field        | The field in the project that determines the columns            |
-| label-to-column-map | A JSON object mapping labels to column names                    |
+| Name                | Description                                                                     |
+|---------------------|---------------------------------------------------------------------------------|
+| github-token        | Access Token with high enough permissions to change the project                 |
+| project-url         | The full url to your project that will be modified                              |
+| column-field        | The field in the project that determines the columns                            |
+| label-to-column-map | A JSON object mapping labels to column names                                    |
+| issue-numbers       | Optional issue/PR numbers to process instead of the triggering event's issue/PR |
+
+By default, the action processes the issue/PR of the triggering `issues` or `pull_request`
+event. Setting `issue-numbers` (newline- or comma-separated) overrides that and allows
+running from any event, e.g. manually via `workflow_dispatch`:
 
 ## Example usage
 

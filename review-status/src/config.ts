@@ -13,6 +13,7 @@ export interface Config {
   maintainerTeams: string[];
   developerTeams: string[];
   promoteAfterDays: number;
+  pullRequestNumber?: number;
 }
 
 export function loadConfig(): Config {
@@ -26,6 +27,7 @@ export function loadConfig(): Config {
     maintainerTeams: teamList('maintainer-teams'),
     developerTeams: teamList('developer-teams'),
     promoteAfterDays: positiveNumber('promote-after-days'),
+    pullRequestNumber: optionalPositiveInt('pull-request-number'),
   };
 }
 
@@ -58,6 +60,16 @@ function positiveNumber(input: string): number {
   const value = Number(core.getInput(input));
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${input} must be a positive number`);
+  }
+  return value;
+}
+
+function optionalPositiveInt(input: string): number | undefined {
+  const raw = core.getInput(input);
+  if (!raw) return undefined;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${input} must be a positive integer, got: ${raw}`);
   }
   return value;
 }

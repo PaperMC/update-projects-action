@@ -23867,7 +23867,8 @@ function loadConfig() {
     delayedApproval: getInput("delayed-approval-status"),
     maintainerTeams: teamList("maintainer-teams"),
     developerTeams: teamList("developer-teams"),
-    promoteAfterDays: positiveNumber("promote-after-days")
+    promoteAfterDays: positiveNumber("promote-after-days"),
+    pullRequestNumber: optionalPositiveInt("pull-request-number")
   };
 }
 function parseProjectUrl(input) {
@@ -23899,6 +23900,15 @@ function positiveNumber(input) {
   }
   return value;
 }
+function optionalPositiveInt(input) {
+  const raw = getInput(input);
+  if (!raw) return void 0;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${input} must be a positive integer, got: ${raw}`);
+  }
+  return value;
+}
 
 // review-status/src/teams.ts
 function createTeamChecker(octokit, org) {
@@ -23924,6 +23934,16 @@ async function fetchMembership(octokit, org, team, login) {
     if (e.status === 404) return false;
     throw e;
   }
+}
+
+// review-status/src/reviews.ts
+function latestActiveByUser(reviews) {
+  const active = /* @__PURE__ */ new Map();
+  for (const review2 of reviews) {
+    if (!review2.user || review2.state !== "APPROVED" && review2.state !== "CHANGES_REQUESTED") continue;
+    active.set(review2.user.login, review2);
+  }
+  return active;
 }
 
 // review-status/src/project.ts
@@ -24037,40 +24057,71 @@ async function listPullRequestsWithStatus(octokit, project, statusName, { owner,
 
 // review-status/src/review.ts
 async function review(octokit, context3, config) {
-  const review2 = context3.payload.review;
-  const pullRequest = context3.payload.pull_request;
-  if (!review2 || !pullRequest) {
-    throw new Error("review mode must run on a pull_request_review event");
-  }
-  if (review2.state.toLowerCase() !== "approved") {
-    info(`Review state is ${review2.state}, nothing to do`);
-    return;
-  }
-  const reviewer = review2.user.login;
+  const prNumbers = await resolvePullRequests(octokit, context3, config);
+  if (prNumbers.length === 0) return;
   const isTeamMember = createTeamChecker(octokit, config.org);
-  let target;
-  if (await isTeamMember(reviewer, config.maintainerTeams)) {
-    target = config.fullApproval;
-  } else if (await isTeamMember(reviewer, config.developerTeams)) {
-    target = config.delayedApproval;
-  } else {
-    info(`${reviewer} is not a maintainer or developer, ignoring approval`);
+  const project = await getProject(octokit, config);
+  for (const number of prNumbers) {
+    await reviewPullRequest(octokit, context3, config, project, isTeamMember, number);
+  }
+}
+async function resolvePullRequests(octokit, context3, config) {
+  if (config.pullRequestNumber !== void 0) {
+    return [config.pullRequestNumber];
+  }
+  const pullRequest = context3.payload.pull_request;
+  if (pullRequest) {
+    return [pullRequest.number];
+  }
+  const workflowRun = context3.payload.workflow_run;
+  if (!workflowRun) {
+    throw new Error(
+      "review mode must run on a pull_request_review or workflow_run event, or be given an explicit pull-request-number"
+    );
+  }
+  const { data } = await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
+    ...context3.repo,
+    commit_sha: workflowRun.head_sha
+  });
+  const numbers = data.filter((pr) => pr.state === "open").map((pr) => pr.number);
+  if (numbers.length === 0) {
+    info(`No open PR found for commit ${workflowRun.head_sha}`);
+  }
+  return numbers;
+}
+async function reviewPullRequest(octokit, context3, config, project, isTeamMember, number) {
+  const reviews = await octokit.paginate(octokit.rest.pulls.listReviews, {
+    ...context3.repo,
+    pull_number: number
+  });
+  let target = null;
+  for (const review2 of latestActiveByUser(reviews).values()) {
+    if (review2.state !== "APPROVED" || !review2.user) continue;
+    if (await isTeamMember(review2.user.login, config.maintainerTeams)) {
+      target = config.fullApproval;
+      break;
+    }
+    if (await isTeamMember(review2.user.login, config.developerTeams)) {
+      target = config.delayedApproval;
+    }
+  }
+  if (!target) {
+    info(`PR #${number}: no active team approval, nothing to do`);
     return;
   }
-  const project = await getProject(octokit, config);
   const option = findOption(project, target);
-  const pr = await getPullRequestItem(octokit, context3.repo, pullRequest.number, config);
+  const pr = await getPullRequestItem(octokit, context3.repo, number, config);
   const item = pr.item ?? await addItemToProject(octokit, project.id, pr.contentId);
   if (sameStatus(item.status, config.fullApproval)) {
-    info(`PR #${pullRequest.number} already has full approval`);
+    info(`PR #${number} already has full approval`);
     return;
   }
   if (sameStatus(item.status, target)) {
-    info(`PR #${pullRequest.number} already set to ${target}`);
+    info(`PR #${number} already set to ${target}`);
     return;
   }
   await setItemStatus(octokit, project, item.id, option);
-  info(`Set PR #${pullRequest.number} to ${target} (approved by ${reviewer})`);
+  info(`Set PR #${number} to ${target}`);
 }
 
 // review-status/src/promote.ts
@@ -24078,11 +24129,7 @@ function submittedAt(review2) {
   return review2.submitted_at ? Date.parse(review2.submitted_at) : 0;
 }
 async function analyzeReviews(reviews, isTeamReviewer) {
-  const activeByUser = /* @__PURE__ */ new Map();
-  for (const review2 of reviews) {
-    if (!review2.user || review2.state !== "APPROVED" && review2.state !== "CHANGES_REQUESTED") continue;
-    activeByUser.set(review2.user.login, review2);
-  }
+  const activeByUser = latestActiveByUser(reviews);
   const approvalTimes = [];
   const clockRestarts = [];
   for (const review2 of reviews) {

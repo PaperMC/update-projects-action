@@ -19685,6 +19685,9 @@ function issueCommand(command, properties, message) {
   const cmd = new Command(command, properties, message);
   process.stdout.write(cmd.toString() + os.EOL);
 }
+function issue(name, message = "") {
+  issueCommand(name, {}, message);
+}
 var CMD_STRING = "::";
 var Command = class {
   constructor(command, properties, message) {
@@ -20128,6 +20131,12 @@ function notice(message, properties = {}) {
 }
 function info(message) {
   process.stdout.write(message + os3.EOL);
+}
+function startGroup(name) {
+  issue("group", name);
+}
+function endGroup() {
+  issue("endgroup");
 }
 
 // node_modules/@actions/github/lib/context.js
@@ -23938,80 +23947,125 @@ var addIssuePrToProject_default = "mutation addIssuePrToProject($projectId: ID!,
 // src/index.ts
 async function run() {
   try {
-    if (context2.eventName != "issues" && context2.eventName != "pull_request") {
-      setFailed(`This action only works on 'issues' and 'pull_request' events.`);
-      return;
-    }
-    const target = context2.payload.issue || context2.payload.pull_request;
-    if (!target || !target.html_url) {
-      setFailed(`Invalid context`);
-      debug(`Context: ${JSON.stringify(context2, null, 2)}`);
-      return;
-    }
-    debug(`Target: ${JSON.stringify(target, null, 2)}`);
-    debug(`Issue/PR: ${JSON.stringify(context2.issue)}`);
+    const issueNumbers = parseIssueNumbers(getInput("issue-numbers"));
     const options = await parseOptions();
     const octokit = options.octokit;
-    const projectStatusRaw = await octokit.graphql(getIssuePrProjectStatus_default, {
-      resourceUrl: target.html_url,
-      fieldName: options.field.name
-    });
-    debug(`GET_ISSUE_PR_PROJECT_STATUS: ${JSON.stringify(projectStatusRaw, null, 2)}`);
-    const currentItem = projectStatusRaw.resource.projectItems.nodes.find((n) => n.project.id == options.project.id);
-    let itemId;
-    if (currentItem) {
-      itemId = currentItem.itemId;
-    } else {
-      itemId = await addToProject(octokit, options.project.id, projectStatusRaw.resource.id);
+    const targets = issueNumbers.length > 0 ? await fetchTargets(octokit, issueNumbers) : targetsFromEvent();
+    if (targets == null) {
+      return;
     }
-    const projectStatus = {
-      targetId: projectStatusRaw.resource.id,
-      projectId: options.project.id,
-      itemId,
-      field: currentItem?.field || null
-      // can be null if the item isn't assigned a field option (No Status)
-    };
-    info(`Project Status: ${JSON.stringify(projectStatus, null, 2)}`);
-    const optionPairs = [];
-    for (const labelName in options.labelToOptionsMap) {
-      const optionName = options.labelToOptionsMap[labelName];
-      const option = options.field.options.find((f) => f.name == optionName);
-      if (!option) {
-        warning(`Could not find a field option on the project for ${options.field.name} named ${optionName}`);
-        continue;
-      }
-      optionPairs.push({ option, label: labelName });
-    }
-    debug(`Final options: ${JSON.stringify(optionPairs, null, 2)}`);
-    for (let i = optionPairs.length - 1; i >= 0; i--) {
-      const pair = optionPairs[i];
-      if (target.labels.some((l) => l.name == pair.label)) {
-        if (projectStatus.field && projectStatus.field.optionId == pair.option.id) {
-          notice(`Already in correct project option ${pair.option.name}.`);
-        } else {
-          notice(`Moving to option ${pair.option.name}...`);
-          await octokit.graphql(changeFieldValueOfItem_default, {
-            projectId: projectStatus.projectId,
-            fieldId: options.field.id,
-            itemId: projectStatus.itemId,
-            optionId: pair.option.id
-          });
-        }
-        return;
+    let failures = 0;
+    for (const target of targets) {
+      startGroup(`Processing ${target.html_url}`);
+      try {
+        await processTarget(octokit, options, target);
+      } catch (error2) {
+        failures++;
+        error(`Failed to process ${target.html_url}: ${error2 instanceof Error ? error2.message : String(error2)}`);
+      } finally {
+        endGroup();
       }
     }
-    if (options.clearOnNoMatch) {
-      notice(`Doesn't have any labels matching an option. Clearing the field...`);
-      await octokit.graphql(clearFieldValueOfItem_default, {
-        projectId: projectStatus.projectId,
-        itemId: projectStatus.itemId,
-        fieldId: options.field.id
-      });
-    } else {
-      notice(`Doesn't have any labels matching an option. Doing nothing...`);
+    if (failures > 0) {
+      setFailed(`Failed to process ${failures} issue(s)/pr(s).`);
     }
   } catch (error2) {
     setFailed(error2 instanceof Error ? error2 : String(error2));
+  }
+}
+function parseIssueNumbers(input) {
+  return input.split(/[\n,]/).map((s) => s.trim()).filter(Boolean).map((s) => {
+    const n = Number(s);
+    if (!Number.isInteger(n) || n <= 0) {
+      throw new Error(`Invalid issue/pr number in issue-numbers: ${s}`);
+    }
+    return n;
+  });
+}
+async function fetchTargets(octokit, issueNumbers) {
+  return await Promise.all(
+    issueNumbers.map(async (issueNumber) => {
+      const { data } = await octokit.rest.issues.get({ ...context2.repo, issue_number: issueNumber });
+      return {
+        html_url: data.html_url,
+        labels: data.labels.map((l) => typeof l == "string" ? { name: l } : { name: l.name ?? "" })
+      };
+    })
+  );
+}
+function targetsFromEvent() {
+  if (context2.eventName != "issues" && context2.eventName != "pull_request") {
+    setFailed(`Provide the issue-numbers input when not running on an 'issues' or 'pull_request' event.`);
+    return null;
+  }
+  const target = context2.payload.issue || context2.payload.pull_request;
+  if (!target || !target.html_url) {
+    setFailed(`Invalid context`);
+    debug(`Context: ${JSON.stringify(context2, null, 2)}`);
+    return null;
+  }
+  debug(`Target: ${JSON.stringify(target, null, 2)}`);
+  debug(`Issue/PR: ${JSON.stringify(context2.issue)}`);
+  return [target];
+}
+async function processTarget(octokit, options, target) {
+  const projectStatusRaw = await octokit.graphql(getIssuePrProjectStatus_default, {
+    resourceUrl: target.html_url,
+    fieldName: options.field.name
+  });
+  debug(`GET_ISSUE_PR_PROJECT_STATUS: ${JSON.stringify(projectStatusRaw, null, 2)}`);
+  const currentItem = projectStatusRaw.resource.projectItems.nodes.find((n) => n.project.id == options.project.id);
+  let itemId;
+  if (currentItem) {
+    itemId = currentItem.itemId;
+  } else {
+    itemId = await addToProject(octokit, options.project.id, projectStatusRaw.resource.id);
+  }
+  const projectStatus = {
+    targetId: projectStatusRaw.resource.id,
+    projectId: options.project.id,
+    itemId,
+    field: currentItem?.field || null
+    // can be null if the item isn't assigned a field option (No Status)
+  };
+  info(`Project Status: ${JSON.stringify(projectStatus, null, 2)}`);
+  const optionPairs = [];
+  for (const labelName in options.labelToOptionsMap) {
+    const optionName = options.labelToOptionsMap[labelName];
+    const option = options.field.options.find((f) => f.name == optionName);
+    if (!option) {
+      warning(`Could not find a field option on the project for ${options.field.name} named ${optionName}`);
+      continue;
+    }
+    optionPairs.push({ option, label: labelName });
+  }
+  debug(`Final options: ${JSON.stringify(optionPairs, null, 2)}`);
+  for (let i = optionPairs.length - 1; i >= 0; i--) {
+    const pair = optionPairs[i];
+    if (target.labels.some((l) => l.name == pair.label)) {
+      if (projectStatus.field && projectStatus.field.optionId == pair.option.id) {
+        notice(`Already in correct project option ${pair.option.name}.`);
+      } else {
+        notice(`Moving to option ${pair.option.name}...`);
+        await octokit.graphql(changeFieldValueOfItem_default, {
+          projectId: projectStatus.projectId,
+          fieldId: options.field.id,
+          itemId: projectStatus.itemId,
+          optionId: pair.option.id
+        });
+      }
+      return;
+    }
+  }
+  if (options.clearOnNoMatch) {
+    notice(`Doesn't have any labels matching an option. Clearing the field...`);
+    await octokit.graphql(clearFieldValueOfItem_default, {
+      projectId: projectStatus.projectId,
+      itemId: projectStatus.itemId,
+      fieldId: options.field.id
+    });
+  } else {
+    notice(`Doesn't have any labels matching an option. Doing nothing...`);
   }
 }
 async function addToProject(octokit, projectId, contentId) {

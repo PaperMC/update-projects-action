@@ -23,6 +23,12 @@ inputs:
     description: Whether or not to clear the `column-field` if no match in `label-to-column-map` is found
     required: true
     default: "true"
+  issue-numbers:
+    description: >
+      Issue/PR numbers of the current repository to process instead of the issue/PR from the
+      triggering event (newline- or comma-separated). Allows running from workflow_dispatch,
+      schedules or any other event type
+    required: false
 
 runs:
   using: node24

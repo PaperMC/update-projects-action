@@ -1,6 +1,6 @@
 {
   "name": "update-projects-action",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A Github Action to add/move issues and prs around in the new Projects",
   "type": "module",
   "scripts": {

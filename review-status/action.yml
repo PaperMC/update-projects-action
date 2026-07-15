@@ -8,9 +8,14 @@ inputs:
     required: true
   mode:
     description: >
-      "review" to set the status from the pull_request_review event that triggered the workflow,
+      "review" to set the status of the affected pull request from its current reviews,
       "promote" to scan the project and promote stale delayed approvals
     required: true
+  pull-request-number:
+    description: >
+      Pull request number to process (review mode). If unset, the pull request is taken from the
+      triggering pull_request_review event, or resolved from the triggering workflow_run's head commit
+    required: false
   project-url:
     description: "URL of the org project, e.g. https://github.com/orgs/PaperMC/projects/2"
     required: true
