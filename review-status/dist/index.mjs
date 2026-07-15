@@ -24079,13 +24079,12 @@ async function resolvePullRequests(octokit, context3, config) {
       "review mode must run on a pull_request_review or workflow_run event, or be given an explicit pull-request-number"
     );
   }
-  const { data } = await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
-    ...context3.repo,
-    commit_sha: workflowRun.head_sha
+  const { data } = await octokit.rest.search.issuesAndPullRequests({
+    q: `repo:${context3.repo.owner}/${context3.repo.repo} is:pr is:open ${workflowRun.head_sha}`
   });
-  const numbers = data.filter((pr) => pr.state === "open").map((pr) => pr.number);
+  const numbers = data.items.map((item) => item.number);
   if (numbers.length === 0) {
-    info(`No open PR found for commit ${workflowRun.head_sha}`);
+    info(`No open PR found containing commit ${workflowRun.head_sha}`);
   }
   return numbers;
 }

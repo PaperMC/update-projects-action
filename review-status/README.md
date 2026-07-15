@@ -9,8 +9,7 @@ otherwise a developer approval sets delayed approval).
 
 Workflows triggered by `pull_request_review` on pull requests from forks run without secrets, so they cannot
 authenticate an app token. Instead, you should run an unprivileged signal workflow and then run the action from a
-privileged
-`workflow_run` workflow. The affected pull request is resolved from the signal run's head commit:
+privileged `workflow_run` workflow. The affected pull request is resolved from the signal run's head commit:
 
 ```yaml
 # pr_review_signal.yml — runs (without secrets) in the context of the fork
